@@ -1,0 +1,65 @@
+{
+	"name": "restez",
+	"version": "0.1.0",
+	"description": "File-based routing for Node with a zero-dependency server built in.",
+	"main": "./dist/cjs/index.cjs",
+	"module": "./dist/esm/index.js",
+	"types": "./dist/types/index.d.ts",
+	"type": "module",
+	"license": "MIT",
+	"engines": {
+		"node": ">=24"
+	},
+	"scripts": {
+		"test": "node --test 'tests/**/*.test.ts'",
+		"test:coverage": "node --experimental-test-coverage --test-coverage-exclude='tests/**' --test 'tests/**/*.test.ts'",
+		"build": "rm -rf dist && rolldown -c rolldown.config.ts --minify && tsc -p tsconfig.build.json",
+		"dev": "rm -rf dist && rolldown -c rolldown.config.ts -w",
+		"lint": "biome check .",
+		"typecheck": "tsc --noEmit"
+	},
+	"bin": {
+		"restez": "./dist/esm/cli.js"
+	},
+	"exports": {
+		".": {
+			"types": "./dist/types/index.d.ts",
+			"import": "./dist/esm/index.js",
+			"require": "./dist/cjs/index.cjs"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"keywords": [
+		"routing",
+		"file-based-routing",
+		"fastify",
+		"http",
+		"server",
+		"typescript"
+	],
+	"author": "Nicolas Rivière",
+	"devEngines": {
+		"packageManager": {
+			"name": "pnpm",
+			"version": "^11.9.0",
+			"onFail": "download"
+		}
+	},
+	"dependencies": {
+		"nanoid": "^5.1.16",
+		"rolldown": "^1.2.0",
+		"zod": "^4.4.3"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.5.4",
+		"@fastify/cookie": "^11.1.2",
+		"@fastify/cors": "^11.3.0",
+		"@fastify/helmet": "^13.1.0",
+		"@types/node": "^26.1.1",
+		"fastify": "^5.10.0",
+		"pino": "^9.6.0",
+		"typescript": "^7.0.2"
+	}
+}
