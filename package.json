@@ -40,6 +40,14 @@
 		"typescript"
 	],
 	"author": "Nicolas Rivière",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/nrservices/routez.git"
+	},
+	"homepage": "https://github.com/nrservices/routez#readme",
+	"bugs": {
+		"url": "https://github.com/nrservices/routez/issues"
+	},
 	"devEngines": {
 		"packageManager": {
 			"name": "pnpm",
