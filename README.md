@@ -11,7 +11,7 @@ the package, drop route files in a `routes/` folder, run `restez dev`.
 ## Install
 
 ```bash
-npm install restez zod
+npm install @nrserv/restez zod
 ```
 
 (`zod` isn't bundled - you need it yourself to write schemas anyway.)
@@ -30,7 +30,7 @@ your-project/
 
 ```ts
 // routes/get.index.ts
-import { defineRoute } from "restez";
+import { defineRoute } from "@nrserv/restez";
 import { z } from "zod";
 
 export default defineRoute({
@@ -56,7 +56,7 @@ A route file is named `<verb>.<segments>.ts`, where `<verb>` is one of
 ## Defining a route
 
 ```ts
-import { defineRoute } from "restez";
+import { defineRoute } from "@nrserv/restez";
 import { z } from "zod";
 
 export default defineRoute({
@@ -77,7 +77,7 @@ export default defineRoute({
 ## Error helpers
 
 ```ts
-import { defineRoute, notFound, unauthorized, badRequest, forbidden, conflict, serverError, httpError } from "restez";
+import { defineRoute, notFound, unauthorized, badRequest, forbidden, conflict, serverError, httpError } from "@nrserv/restez";
 
 export default defineRoute({
   response: z.object({ id: z.uuid() }),
@@ -94,7 +94,7 @@ Each helper (`badRequest`, `unauthorized`, `forbidden`, `notFound`, `conflict`, 
 To give every error response a consistent shape (checked at compile time, not validated at runtime), augment `ErrorResponseBody`:
 
 ```ts
-declare module "restez" {
+declare module "@nrserv/restez" {
   interface ErrorResponseBody {
     error: string;
     code?: string;
@@ -108,7 +108,7 @@ A hook file (`_hook.<name>.ts`) applies to every route in its folder and every f
 
 ```ts
 // routes/(protected)/_hook.auth.ts
-import { defineHook, unauthorized, setContextData } from "restez";
+import { defineHook, unauthorized, setContextData } from "@nrserv/restez";
 
 export default defineHook(async (req) => {
   const token = req.headers.authorization;
@@ -132,14 +132,14 @@ Route handlers only ever receive their own typed request (`body`, `params`, ...)
 setContextData("user", user);
 
 // in a route handler, or in any function called from it
-import { getContextData } from "restez";
+import { getContextData } from "@nrserv/restez";
 const user = getContextData("user");
 ```
 
 Type the key once per project, via `declare module`:
 
 ```ts
-declare module "restez" {
+declare module "@nrserv/restez" {
   interface RequestContextData {
     user: { id: string; email: string };
   }
@@ -151,7 +151,7 @@ declare module "restez" {
 A [pino](https://getpino.io) logger is available out of the box - no extra install, no config required:
 
 ```ts
-import { logger } from "restez";
+import { logger } from "@nrserv/restez";
 
 logger.info("something happened");
 logger.error({ err }, "something went wrong");
@@ -166,7 +166,7 @@ To use your own pino instance instead (custom transport, shipping logs elsewhere
 
 ```ts
 // restez.config.ts
-import { defineConfig } from "restez";
+import { defineConfig } from "@nrserv/restez";
 import pino from "pino";
 
 export default defineConfig({
@@ -190,7 +190,7 @@ Options are resolved in this order: CLI flag > `restez.config.ts` > `.env` > def
 
 ```ts
 // restez.config.ts
-import { defineConfig } from "restez";
+import { defineConfig } from "@nrserv/restez";
 
 export default defineConfig({
   port: 4000,

@@ -1,5 +1,5 @@
 {
-	"name": "restez",
+	"name": "@nrserv/restez",
 	"version": "0.1.0",
 	"description": "File-based routing for Node with a zero-dependency server built in.",
 	"main": "./dist/cjs/index.cjs",
