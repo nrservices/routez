@@ -19,7 +19,7 @@ const { values, positionals } = parseArgs({
 });
 
 const DEFAULT_ROUTES_DIR = "./routes";
-const DEFAULT_OUT_DIR = ".nrr";
+const DEFAULT_OUT_DIR = `.${PACKAGE_NAME}`;
 const DEFAULT_PORT = 3000;
 const COMMANDS = ["dev", "build", "start"] as const;
 

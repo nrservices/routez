@@ -22,4 +22,8 @@ describe("parseAllowOrigins", () => {
 	it("filters out empty entries from stray commas", () => {
 		assert.deepEqual(parseAllowOrigins("https://a.com,,https://b.com,"), ["https://a.com", "https://b.com"]);
 	});
+
+	it("passes an already-split array through, trimmed and filtered the same way", () => {
+		assert.deepEqual(parseAllowOrigins([" https://a.com ", "", "https://b.com"]), ["https://a.com", "https://b.com"]);
+	});
 });

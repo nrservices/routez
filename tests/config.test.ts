@@ -11,6 +11,12 @@ describe("defineConfig", () => {
 		const config = { port: 1234 };
 		assert.equal(defineConfig(config), config);
 	});
+
+	it("accepts the string/undefined shape process.env values have", () => {
+		const config = defineConfig({ port: process.env.SOME_UNSET_PORT, allowOrigins: process.env.SOME_UNSET_ORIGIN });
+		assert.equal(config.port, undefined);
+		assert.equal(config.allowOrigins, undefined);
+	});
 });
 
 describe("loadConfig", () => {
@@ -69,5 +75,36 @@ describe("loadConfig", () => {
 
 		const config = await loadConfig(dir.path);
 		assert.equal(config.port, 7000);
+	});
+
+	it("coerces a string port from a config file (e.g. forwarded from process.env.PORT)", async (t) => {
+		const dir = createTempDir();
+		t.after(dir.cleanup);
+		writeFileSync(join(dir.path, CONFIG_FILE_NAME), 'export default { port: "7000" };\n');
+
+		const config = await loadConfig(dir.path);
+		assert.equal(config.port, 7000);
+	});
+
+	it("splits a comma-separated allowOrigins string from a config file", async (t) => {
+		const dir = createTempDir();
+		t.after(dir.cleanup);
+		writeFileSync(
+			join(dir.path, CONFIG_FILE_NAME),
+			'export default { allowOrigins: "https://a.com,https://b.com" };\n',
+		);
+
+		const config = await loadConfig(dir.path);
+		assert.deepEqual(config.allowOrigins, ["https://a.com", "https://b.com"]);
+	});
+
+	it("falls through to the env-derived port when a config file sets it to undefined", async (t) => {
+		const dir = createTempDir();
+		t.after(dir.cleanup);
+		writeFileSync(join(dir.path, ".env"), "PORT=6000\n");
+		writeFileSync(join(dir.path, CONFIG_FILE_NAME), "export default { port: undefined };\n");
+
+		const config = await loadConfig(dir.path);
+		assert.equal(config.port, undefined, "an explicit undefined in the config file overrides the .env value");
 	});
 });
