@@ -182,7 +182,7 @@ restez build    # bundle the app once, without starting it
 restez start    # run a build produced by `restez build`
 ```
 
-Options (all three commands): `--routesDir <dir>` (default `./routes`), `--outDir <dir>` (default `.nrr`), `--port <port>` (default `3000`).
+Options (all three commands): `--routesDir <dir>` (default `./routes`), `--outDir <dir>` (default `.routez`), `--port <port>` (default `3000`).
 
 ## Configuration
 
