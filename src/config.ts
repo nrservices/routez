@@ -14,7 +14,18 @@ export interface RoutingConfig {
 	logger?: Logger;
 }
 
-export function defineConfig(config: RoutingConfig): RoutingConfig {
+/**
+ * `defineConfig`'s input shape - same as `RoutingConfig`, except `port`/`allowOrigins` also
+ * accept the raw `string | undefined` shape `process.env.X` has, so a config file can forward
+ * an env var directly (`port: process.env.PORT`) without parsing it by hand first. `loadConfig`
+ * normalizes this down to `RoutingConfig` after the config file is loaded.
+ */
+export interface RoutingConfigInput extends Omit<RoutingConfig, "port" | "allowOrigins"> {
+	port?: number | string;
+	allowOrigins?: string | string[];
+}
+
+export function defineConfig(config: RoutingConfigInput): RoutingConfigInput {
 	return config;
 }
 
@@ -31,12 +42,28 @@ export async function loadConfig(cwd: string): Promise<RoutingConfig> {
 
 	const configPath = join(cwd, CONFIG_FILE_NAME);
 	if (existsSync(configPath)) {
-		const module = (await import(pathToFileURL(configPath).href)) as { default?: RoutingConfig };
-		return { ...envConfig, ...module.default };
+		const module = (await import(pathToFileURL(configPath).href)) as { default?: RoutingConfigInput };
+		return { ...envConfig, ...normalizeConfigInput(module.default) };
 	}
 
 	return envConfig;
 }
+
+/**
+ * Only touches `port`/`allowOrigins` on the returned object when the input actually set them -
+ * an absent key must stay absent, so the `{ ...envConfig, ...normalized }` merge above doesn't
+ * clobber an env/`.env`-derived value with an explicit `undefined` just because the config file
+ * didn't mention that field at all.
+ */
+const normalizeConfigInput = (input: RoutingConfigInput = {}): RoutingConfig => {
+	const { port, allowOrigins, ...rest } = input;
+	const config: RoutingConfig = rest;
+
+	if ("port" in input) config.port = port === undefined ? undefined : Number(port);
+	if ("allowOrigins" in input) config.allowOrigins = parseAllowOrigins(allowOrigins);
+
+	return config;
+};
 
 const loadEnvFile = (cwd: string): void => {
 	const envPath = join(cwd, ENV_FILE_NAME);
