@@ -69,8 +69,6 @@ export async function start({
 		reply.status(404).send({ error: "Not found" });
 	});
 
-	server.get("/healthz", async () => ({ status: "ok" }));
-
 	routes.forEach(({ method, url, handler }) => {
 		server.route({
 			method,
