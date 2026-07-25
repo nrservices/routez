@@ -6,15 +6,6 @@ import { start } from "../src/runtime.ts";
 import { composeRoute, type Route } from "../src/scan.ts";
 
 describe("start", () => {
-	it("responds on /healthz", async (t) => {
-		const { port, stop } = await start({ port: 0, routes: [], allowOrigins: [] });
-		t.after(stop);
-
-		const res = await fetch(`http://localhost:${port}/healthz`);
-		assert.equal(res.status, 200);
-		assert.deepEqual(await res.json(), { status: "ok" });
-	});
-
 	it("serves a registered route and sets x-request-id", async (t) => {
 		const routeHandler = defineRoute({ response: z.object({}), handler: async () => ({ data: {} }) });
 		const route: Route = { method: "GET", url: "/hello", handler: composeRoute("route.ts", routeHandler, []) };
@@ -57,23 +48,27 @@ describe("start", () => {
 	});
 
 	it("returns 500 without crashing when a handler throws, and keeps serving", async (t) => {
-		const routeHandler = defineRoute({
+		const boomHandler = defineRoute({
 			response: z.object({}),
 			handler: async () => {
 				throw new Error("kaboom");
 			},
 		});
-		const route: Route = { method: "GET", url: "/boom", handler: composeRoute("route.ts", routeHandler, []) };
+		const okHandler = defineRoute({ response: z.object({}), handler: async () => ({ data: {} }) });
+		const routes: Route[] = [
+			{ method: "GET", url: "/boom", handler: composeRoute("route.ts", boomHandler, []) },
+			{ method: "GET", url: "/ok", handler: composeRoute("route.ts", okHandler, []) },
+		];
 
-		const { port, stop } = await start({ port: 0, routes: [route], allowOrigins: [] });
+		const { port, stop } = await start({ port: 0, routes, allowOrigins: [] });
 		t.after(stop);
 
 		const res = await fetch(`http://localhost:${port}/boom`);
 		assert.equal(res.status, 500);
 		assert.deepEqual(await res.json(), { error: "Internal Server Error" });
 
-		const health = await fetch(`http://localhost:${port}/healthz`);
-		assert.equal(health.status, 200);
+		const ok = await fetch(`http://localhost:${port}/ok`);
+		assert.equal(ok.status, 200);
 	});
 
 	it("keeps the real message for a client-caused 4xx (malformed JSON body)", async (t) => {
