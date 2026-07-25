@@ -86,11 +86,28 @@ const generateEntrySource = (opt: BuildOptions): string => {
 	const config = { port: opt.port, allowOrigins: opt.allowOrigins };
 
 	return `
-		import { start, composeRoute, loadConfig } from ${JSON.stringify(RUNTIME_ENTRY_PATH)};
+		import { start, composeRoute, loadConfig, logger as defaultLogger } from ${JSON.stringify(RUNTIME_ENTRY_PATH)};
 		${imports.join("\n")}
 
 		try {
 			const { logger } = await loadConfig(${JSON.stringify(opt.cwd)});
+			// Same fallback \`start()\` applies internally to its own \`logger\` option - needed here too
+			// since \`loadConfig\`'s \`logger\` is only set when a project's config file provides one.
+			const log = logger ?? defaultLogger;
+
+			// Last-resort net for anything that escapes a request's own lifecycle (a fire-and-forget
+			// rejection, a throw inside a timer callback, ...) - Node's default behavior otherwise is
+			// to kill the process with a raw stack trace on stderr, no structured log entry, taking
+			// every in-flight request down with it silently.
+			process.on("uncaughtException", (err) => {
+				log.error({ err }, "uncaughtException");
+				process.exit(1);
+			});
+			process.on("unhandledRejection", (reason) => {
+				log.error({ err: reason }, "unhandledRejection");
+				process.exit(1);
+			});
+
 			const { stop } = await start({ ...${JSON.stringify(config)}, logger, routes: [${routeEntries.join(", ")}] });
 
 			const shutdown = async () => {

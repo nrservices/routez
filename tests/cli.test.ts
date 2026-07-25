@@ -34,6 +34,23 @@ const writeRoute = (routesDir: string, message: string): void => {
 	);
 };
 
+/** `trigger` fires outside the request's own promise chain - Fastify can't catch it, only the entry's process-level handlers can. */
+const writeCrashingRoute = (routesDir: string, trigger: string): void => {
+	writeFileSync(
+		join(routesDir, "get.index.ts"),
+		`
+		import { defineRoute } from ${JSON.stringify(INDEX_PATH)};
+		export default defineRoute({
+			response: { safeParse: (d) => ({ success: true, data: d }) },
+			handler: async () => {
+				${trigger}
+				return { data: {} };
+			},
+		});
+		`,
+	);
+};
+
 const waitForExit = (child: ChildProcess): Promise<number | null> =>
 	new Promise((resolvePromise) => child.once("exit", (code) => resolvePromise(code)));
 
@@ -150,5 +167,53 @@ describe("cli", () => {
 		child.kill("SIGTERM");
 		const code = await waitForExit(child);
 		assert.equal(code, 0);
+	});
+
+	it("exits 1 on an uncaughtException instead of hanging or crashing silently", async (t) => {
+		const project = createFixtureProject();
+		t.after(project.cleanup);
+
+		const routesDir = join(project.path, "routes");
+		mkdirSync(routesDir);
+		writeCrashingRoute(routesDir, 'setTimeout(() => { throw new Error("boom"); }, 0);');
+
+		const port = 43000 + Math.floor(Math.random() * 1000);
+		const build = runCli(["build", "--port", String(port)], project.path);
+		assert.equal(build.status, 0);
+
+		const child = spawn(process.execPath, [CLI_PATH, "start"], { cwd: project.path, stdio: "ignore" });
+		t.after(() => {
+			if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
+		});
+
+		// Attached before the request that triggers the crash - the child can exit as soon as
+		// that request is handled, and a listener added after the fact would miss the event.
+		const exited = waitForExit(child);
+		await pollUntilUp(port);
+
+		assert.equal(await exited, 1);
+	});
+
+	it("exits 1 on an unhandledRejection instead of hanging or crashing silently", async (t) => {
+		const project = createFixtureProject();
+		t.after(project.cleanup);
+
+		const routesDir = join(project.path, "routes");
+		mkdirSync(routesDir);
+		writeCrashingRoute(routesDir, 'Promise.reject(new Error("boom"));');
+
+		const port = 44000 + Math.floor(Math.random() * 1000);
+		const build = runCli(["build", "--port", String(port)], project.path);
+		assert.equal(build.status, 0);
+
+		const child = spawn(process.execPath, [CLI_PATH, "start"], { cwd: project.path, stdio: "ignore" });
+		t.after(() => {
+			if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
+		});
+
+		const exited = waitForExit(child);
+		await pollUntilUp(port);
+
+		assert.equal(await exited, 1);
 	});
 });
