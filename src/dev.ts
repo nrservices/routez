@@ -59,6 +59,7 @@ const buildAndStart = async (opt: DevOptions, stop: (() => Promise<void>) | unde
 	await stop?.();
 
 	if (err) {
+		// biome-ignore lint/suspicious/noConsole: temporary - revisit as part of a CLI logging pass
 		console.log(err);
 		return;
 	}

@@ -1,6 +1,6 @@
 {
 	"name": "@nrserv/restez",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "File-based routing for Node with a zero-dependency server built in.",
 	"main": "./dist/cjs/index.cjs",
 	"module": "./dist/esm/index.js",
@@ -16,7 +16,8 @@
 		"build": "rm -rf dist && rolldown -c rolldown.config.ts --minify && tsc -p tsconfig.build.json",
 		"dev": "rm -rf dist && rolldown -c rolldown.config.ts -w",
 		"lint": "biome check .",
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --noEmit",
+		"prepublishOnly": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
 	},
 	"bin": {
 		"restez": "./dist/esm/cli.js"
@@ -29,7 +30,8 @@
 		}
 	},
 	"files": [
-		"dist"
+		"dist",
+		"CHANGELOG.md"
 	],
 	"keywords": [
 		"routing",

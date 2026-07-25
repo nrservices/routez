@@ -102,6 +102,12 @@ declare module "@nrserv/restez" {
 }
 ```
 
+### Unexpected errors
+
+An unexpected throw (a bug, a rejected DB call, ...) - unlike `notFound()`/`badRequest()`/etc., which never throw - gets a generic `500 { error: "Internal Server Error" }` response; the real error is only ever logged, never sent to the client. The one exception is a 4xx Fastify raises itself (malformed JSON, unsupported content-type, payload too large, ...), which keeps its own message since it describes a problem with the client's own request rather than an internal one.
+
+An error that escapes a request entirely (a fire-and-forget rejection, a throw inside a timer callback, ...) is logged the same way, then the process exits - there's no way to keep serving safely once that happens.
+
 ## Hooks
 
 A hook file (`_hook.<name>.ts`) applies to every route in its folder and every folder below it. Hooks run in order (outermost folder first) before the route's own handler.
