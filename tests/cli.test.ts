@@ -88,7 +88,7 @@ describe("cli", () => {
 
 		const { status } = runCli(["build"], dir.path);
 		assert.equal(status, 0);
-		assert.ok(existsSync(join(dir.path, ".nrr", "entry.js")));
+		assert.ok(existsSync(join(dir.path, `.${PACKAGE_NAME}`, "entry.js")));
 	});
 
 	it("start exits with a clear error when no build exists yet", (t) => {
