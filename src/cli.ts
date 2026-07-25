@@ -40,6 +40,7 @@ const main = async (): Promise<void> => {
 	const command = positionals[0];
 
 	if (!command || !(COMMANDS as readonly string[]).includes(command)) {
+		// biome-ignore lint/suspicious/noConsole: temporary - revisit as part of a CLI logging pass
 		console.log(USAGE);
 		process.exitCode = command ? 1 : 0;
 		return;
@@ -81,6 +82,7 @@ const main = async (): Promise<void> => {
 };
 
 main().catch((error: unknown) => {
+	// biome-ignore lint/suspicious/noConsole: temporary - revisit as part of a CLI logging pass
 	console.error(error);
 	process.exitCode = 1;
 });
