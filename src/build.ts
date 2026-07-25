@@ -11,6 +11,8 @@ export interface BuildOptions {
 	outDir: string;
 	port: number;
 	allowOrigins?: string[];
+	bodyLimit?: number;
+	requestTimeout?: number;
 	external?: (string | RegExp)[];
 }
 
@@ -83,7 +85,12 @@ const generateEntrySource = (opt: BuildOptions): string => {
 		return `{ method: ${JSON.stringify(route.method)}, url: ${JSON.stringify(route.routePath)}, handler: composeRoute(${JSON.stringify(route.filePath)}, ${handlerIdentifier}, [${hookEntries.join(", ")}]) }`;
 	});
 
-	const config = { port: opt.port, allowOrigins: opt.allowOrigins };
+	const config = {
+		port: opt.port,
+		allowOrigins: opt.allowOrigins,
+		bodyLimit: opt.bodyLimit,
+		requestTimeout: opt.requestTimeout,
+	};
 
 	return `
 		import { start, composeRoute, loadConfig, logger as defaultLogger } from ${JSON.stringify(RUNTIME_ENTRY_PATH)};

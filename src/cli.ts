@@ -52,9 +52,10 @@ const main = async (): Promise<void> => {
 	const outDir = resolve(cwd, values.outDir ?? config.outDir ?? DEFAULT_OUT_DIR);
 	const port = Number(values.port ?? config.port ?? DEFAULT_PORT);
 	const allowOrigins = config.allowOrigins ?? [];
+	const { bodyLimit, requestTimeout } = config;
 
 	if (command === "dev") {
-		const stop = await dev({ cwd, routesDir, outDir, port, allowOrigins });
+		const stop = await dev({ cwd, routesDir, outDir, port, allowOrigins, bodyLimit, requestTimeout });
 		const shutdown = async (): Promise<void> => {
 			await stop();
 			process.exit(0);
@@ -65,7 +66,7 @@ const main = async (): Promise<void> => {
 	}
 
 	if (command === "build") {
-		await buildEntry({ cwd, routesDir, outDir, port, allowOrigins });
+		await buildEntry({ cwd, routesDir, outDir, port, allowOrigins, bodyLimit, requestTimeout });
 		return;
 	}
 

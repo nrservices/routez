@@ -12,17 +12,24 @@ export interface RoutingConfig {
 	allowOrigins?: string[];
 	/** Overrides the default logger entirely - build your own `pino(...)` instance (custom transport, etc.) and hand it here. */
 	logger?: Logger;
+	/** Max request body size in bytes, passed to the adapter as-is (Fastify default: 1048576, i.e. 1 MiB). A future non-Fastify adapter may interpret this differently, or ignore it if the concept doesn't apply. */
+	bodyLimit?: number;
+	/** Max milliseconds to receive an entire request before the socket is closed, passed to the adapter as-is (Fastify default: 0, disabled). A future non-Fastify adapter may interpret this differently, or ignore it if the concept doesn't apply. */
+	requestTimeout?: number;
 }
 
 /**
- * `defineConfig`'s input shape - same as `RoutingConfig`, except `port`/`allowOrigins` also
- * accept the raw `string | undefined` shape `process.env.X` has, so a config file can forward
- * an env var directly (`port: process.env.PORT`) without parsing it by hand first. `loadConfig`
- * normalizes this down to `RoutingConfig` after the config file is loaded.
+ * `defineConfig`'s input shape - same as `RoutingConfig`, except `port`/`allowOrigins`/`bodyLimit`/
+ * `requestTimeout` also accept the raw `string | undefined` shape `process.env.X` has, so a config
+ * file can forward an env var directly (`port: process.env.PORT`) without parsing it by hand first.
+ * `loadConfig` normalizes this down to `RoutingConfig` after the config file is loaded.
  */
-export interface RoutingConfigInput extends Omit<RoutingConfig, "port" | "allowOrigins"> {
+export interface RoutingConfigInput
+	extends Omit<RoutingConfig, "port" | "allowOrigins" | "bodyLimit" | "requestTimeout"> {
 	port?: number | string;
 	allowOrigins?: string | string[];
+	bodyLimit?: number | string;
+	requestTimeout?: number | string;
 }
 
 export function defineConfig(config: RoutingConfigInput): RoutingConfigInput {
@@ -50,17 +57,20 @@ export async function loadConfig(cwd: string): Promise<RoutingConfig> {
 }
 
 /**
- * Only touches `port`/`allowOrigins` on the returned object when the input actually set them -
- * an absent key must stay absent, so the `{ ...envConfig, ...normalized }` merge above doesn't
- * clobber an env/`.env`-derived value with an explicit `undefined` just because the config file
- * didn't mention that field at all.
+ * Only touches a field on the returned object when the input actually set it - an absent key
+ * must stay absent, so the `{ ...envConfig, ...normalized }` merge above doesn't clobber an
+ * env/`.env`-derived value with an explicit `undefined` just because the config file didn't
+ * mention that field at all.
  */
 const normalizeConfigInput = (input: RoutingConfigInput = {}): RoutingConfig => {
-	const { port, allowOrigins, ...rest } = input;
+	const { port, allowOrigins, bodyLimit, requestTimeout, ...rest } = input;
 	const config: RoutingConfig = rest;
 
 	if ("port" in input) config.port = port === undefined ? undefined : Number(port);
 	if ("allowOrigins" in input) config.allowOrigins = parseAllowOrigins(allowOrigins);
+	if ("bodyLimit" in input) config.bodyLimit = bodyLimit === undefined ? undefined : Number(bodyLimit);
+	if ("requestTimeout" in input)
+		config.requestTimeout = requestTimeout === undefined ? undefined : Number(requestTimeout);
 
 	return config;
 };
