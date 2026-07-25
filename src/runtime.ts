@@ -53,9 +53,16 @@ export async function start({
 	await server.register(helmet);
 	await server.register(cookie);
 
+	// `error.message` is only trustworthy for a 4xx Fastify raises itself (bad JSON, unsupported
+	// content-type, payload too large, ...) - it describes a problem with the client's own request.
+	// Anything else reaching this handler is an unexpected throw from application code (a bug, a
+	// rejected DB call, ...) whose message was never meant to be client-facing and may carry internal
+	// detail; the full error is still available to the log line above.
 	server.setErrorHandler<FastifyError>((error, _request, reply) => {
 		log.error(error);
-		reply.status(error.statusCode ?? 500).send({ error: error.message });
+		const statusCode = error.statusCode ?? 500;
+		const isClientError = statusCode >= 400 && statusCode < 500;
+		reply.status(statusCode).send({ error: isClientError ? error.message : "Internal Server Error" });
 	});
 
 	server.setNotFoundHandler((_request, reply) => {
