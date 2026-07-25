@@ -98,6 +98,19 @@ describe("loadConfig", () => {
 		assert.deepEqual(config.allowOrigins, ["https://a.com", "https://b.com"]);
 	});
 
+	it("coerces string bodyLimit/requestTimeout from a config file", async (t) => {
+		const dir = createTempDir();
+		t.after(dir.cleanup);
+		writeFileSync(
+			join(dir.path, CONFIG_FILE_NAME),
+			'export default { bodyLimit: "2097152", requestTimeout: "5000" };\n',
+		);
+
+		const config = await loadConfig(dir.path);
+		assert.equal(config.bodyLimit, 2097152);
+		assert.equal(config.requestTimeout, 5000);
+	});
+
 	it("falls through to the env-derived port when a config file sets it to undefined", async (t) => {
 		const dir = createTempDir();
 		t.after(dir.cleanup);

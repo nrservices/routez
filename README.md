@@ -186,7 +186,7 @@ Options (all three commands): `--routesDir <dir>` (default `./routes`), `--outDi
 
 ## Configuration
 
-Options are resolved in this order: CLI flag > `restez.config.ts` > `.env` > default.
+Options are resolved in this order: CLI flag > `restez.config.ts` > `.env` > default. Not every option supports every source - `logger`, `bodyLimit` and `requestTimeout` are config-file only (no CLI flag, no `.env` support).
 
 ```ts
 // restez.config.ts
@@ -195,6 +195,8 @@ import { defineConfig } from "@nrserv/restez";
 export default defineConfig({
   port: 4000,
   allowOrigins: ["https://example.com"],
+  bodyLimit: 2 * 1024 * 1024, // bytes - default: 1048576 (1 MiB)
+  requestTimeout: 10_000,     // ms - default: 0 (disabled)
 });
 ```
 

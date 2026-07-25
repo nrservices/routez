@@ -88,4 +88,20 @@ describe("start", () => {
 		const body = (await res.json()) as { error: string };
 		assert.match(body.error, /not valid json/i);
 	});
+
+	it("rejects a request body larger than the configured bodyLimit", async (t) => {
+		const routeHandler = defineRoute({ response: z.object({}), handler: async () => ({ data: {} }) });
+		const route: Route = { method: "POST", url: "/echo", handler: composeRoute("route.ts", routeHandler, []) };
+
+		const { port, stop } = await start({ port: 0, routes: [route], allowOrigins: [], bodyLimit: 10 });
+		t.after(stop);
+
+		const res = await fetch(`http://localhost:${port}/echo`, {
+			method: "POST",
+			headers: { "content-type": "application/json" },
+			body: JSON.stringify({ message: "this body is well over ten bytes" }),
+		});
+
+		assert.equal(res.status, 413);
+	});
 });

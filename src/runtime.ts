@@ -15,6 +15,8 @@ export interface RuntimeOptions {
 	port: number;
 	allowOrigins?: string[];
 	logger?: Logger;
+	bodyLimit?: number;
+	requestTimeout?: number;
 }
 
 export interface StartedServer {
@@ -33,6 +35,8 @@ export async function start({
 	routes,
 	allowOrigins: origin = [],
 	logger: customLogger,
+	bodyLimit,
+	requestTimeout,
 }: RuntimeOptions): Promise<StartedServer> {
 	const log = customLogger ?? defaultLogger;
 
@@ -42,6 +46,8 @@ export async function start({
 		trustProxy: true,
 		loggerInstance: log,
 		logController: new LogController({ disableRequestLogging: true }),
+		bodyLimit,
+		requestTimeout,
 	});
 
 	await server.register(cors, {
