@@ -70,8 +70,27 @@ describe("start", () => {
 
 		const res = await fetch(`http://localhost:${port}/boom`);
 		assert.equal(res.status, 500);
+		assert.deepEqual(await res.json(), { error: "Internal Server Error" });
 
 		const health = await fetch(`http://localhost:${port}/healthz`);
 		assert.equal(health.status, 200);
+	});
+
+	it("keeps the real message for a client-caused 4xx (malformed JSON body)", async (t) => {
+		const routeHandler = defineRoute({ response: z.object({}), handler: async () => ({ data: {} }) });
+		const route: Route = { method: "POST", url: "/echo", handler: composeRoute("route.ts", routeHandler, []) };
+
+		const { port, stop } = await start({ port: 0, routes: [route], allowOrigins: [] });
+		t.after(stop);
+
+		const res = await fetch(`http://localhost:${port}/echo`, {
+			method: "POST",
+			headers: { "content-type": "application/json" },
+			body: "{not valid json",
+		});
+
+		assert.equal(res.status, 400);
+		const body = (await res.json()) as { error: string };
+		assert.match(body.error, /not valid json/i);
 	});
 });
