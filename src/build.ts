@@ -1,3 +1,4 @@
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Plugin } from "rolldown";
@@ -54,8 +55,11 @@ const virtualEntryPlugin = (opt: BuildOptions): Plugin => ({
  * Discovers routes/hooks (walking `opt.routesDir`) and emits source that statically imports
  * each one by its real file path, instead of `runtime.ts` dynamically `import()`-ing raw
  * source at request-serving time. Static imports let rolldown's own resolver handle
- * extensions, tsconfig-style aliases and any TS-authored generated code (e.g. Prisma) the
- * same way it already resolves this package's own entry - a bare Node `import()` cannot.
+ * extensions, a project's own package.json `imports` subpath aliases (see `isExternal`) and
+ * any TS-authored generated code (e.g. Prisma) the same way it already resolves this
+ * package's own entry - a bare Node `import()` cannot. Note this is Node's native `imports`
+ * field, not TypeScript's `compilerOptions.paths` - the latter is a type-checking-only
+ * concept with no runtime meaning, and isn't resolved here or anywhere else in this package.
  */
 const generateEntrySource = (opt: BuildOptions): string => {
 	const discovered = walk(opt.routesDir);
@@ -136,10 +140,38 @@ const generateEntrySource = (opt: BuildOptions): string => {
  * resolved normally by Node from the target project's own `node_modules` at runtime - so a
  * rebuild only re-bundles the target's own route/hook files, not their entire dependency
  * tree (which would also risk breaking native addons/dynamic requires bundlers choke on).
- * Only relative or absolute specifiers (the target's own source, plus this package's already
- * pre-built runtime.js) are actually resolved and bundled by rolldown.
+ * Relative specifiers, absolute paths (the target's own source, plus this package's already
+ * pre-built runtime.js) and `#`-prefixed ones (a project's own package.json `imports` subpath
+ * aliases - not a third-party dependency, even though the bare-looking syntax says otherwise)
+ * are all resolved and bundled by rolldown instead: the target's own code should never need to
+ * exist on disk next to the built `entry.js` for it to run.
  */
 const isExternal = (id: string, opt: BuildOptions): boolean => {
-	if (!id.startsWith(".") && !isAbsolute(id)) return true;
+	if (!id.startsWith(".") && !id.startsWith("#") && !isAbsolute(id)) return true;
 	return opt.external?.some((pattern) => (typeof pattern === "string" ? id === pattern : pattern.test(id))) ?? false;
+};
+
+/**
+ * Directories a project's own package.json `imports` field (`#foo/*"` subpath aliases) points
+ * at - now that `isExternal` bundles those instead of leaving them for Node to resolve at
+ * runtime, `dev`'s file watcher needs to know about them too, or editing an aliased file
+ * wouldn't trigger a rebuild at all (unlike before, when Node re-read it fresh from disk on
+ * every process restart regardless of any watcher). Read directly from package.json rather than
+ * assuming any particular layout - a project's own alias targets can be anything.
+ */
+export const getImportsWatchDirs = (cwd: string): string[] => {
+	const packageJsonPath = join(cwd, "package.json");
+	if (!existsSync(packageJsonPath)) return [];
+
+	const pkg = JSON.parse(readFileSync(packageJsonPath, "utf8")) as { imports?: Record<string, unknown> };
+	if (!pkg.imports) return [];
+
+	const dirs = new Set<string>();
+	for (const target of Object.values(pkg.imports)) {
+		if (typeof target !== "string") continue;
+		const dir = resolve(cwd, target.replace(/\*$/, ""));
+		if (existsSync(dir)) dirs.add(dir);
+	}
+
+	return [...dirs];
 };

@@ -1,6 +1,6 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { watch } from "node:fs";
-import { type BuildOptions, buildEntry, getEntryPath } from "./build.ts";
+import { type BuildOptions, buildEntry, getEntryPath, getImportsWatchDirs } from "./build.ts";
 import { createRunner } from "./utils/createRunner.ts";
 import { debounce } from "./utils/debounce.ts";
 import { tryCatch } from "./utils/tryCatch.ts";
@@ -25,11 +25,13 @@ export const dev = async (opt: DevOptions) => {
 		stop = await buildAndStart(opt, stop);
 	});
 
-	const fsWatcher = watch(opt.routesDir, { recursive: true }, debounce(runner.schedule, WATCH_DEBOUNCE_MS));
+	const scheduleRebuild = debounce(runner.schedule, WATCH_DEBOUNCE_MS);
+	const watchDirs = [opt.routesDir, ...getImportsWatchDirs(opt.cwd)];
+	const fsWatchers = watchDirs.map((dir) => watch(dir, { recursive: true }, scheduleRebuild));
 	await runner.schedule();
 
 	return async () => {
-		fsWatcher.close();
+		for (const fsWatcher of fsWatchers) fsWatcher.close();
 		await runner.idle();
 		await stop?.();
 	};
