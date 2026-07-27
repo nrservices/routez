@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.1.2] - 2026-07-27
+
+### Fixed
+
+- A project's own package.json `imports` subpath aliases (e.g. `"#/*": "./src/domain/*"`) were left external instead of bundled, like a third-party npm package - silently depending on the raw, un-transpiled source tree being deployed alongside the built `entry.js`, and on Node's own `imports`-field/native-TypeScript-execution behavior working identically at runtime as it did wherever the project was built. Now bundled the same way relative and absolute imports already were: a built `entry.js` (plus `node_modules` for genuine dependencies) is self-contained and no longer needs the project's source tree to exist next to it at all.
+
+### Added
+
+- `restez dev`'s file watcher now also covers every directory referenced by the project's package.json `imports` field, not just `routesDir`. Editing a file reached only through an aliased import (e.g. `#/event/Event.ts`) now triggers a rebuild - previously it silently didn't, since such files were resolved fresh from disk by Node rather than bundled, and nothing pointed the watcher at them.
+
 ## [0.1.1] - 2026-07-25
 
 ### Fixed

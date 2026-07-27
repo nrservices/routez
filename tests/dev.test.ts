@@ -68,4 +68,52 @@ describe("dev", () => {
 		const secondMessage = await pollForMessage(port, "v2");
 		assert.equal(secondMessage, "v2");
 	});
+
+	it("rebuilds when a file reached via a package.json #imports alias changes, not just routesDir", async (t) => {
+		const project = createFixtureProject();
+		t.after(project.cleanup);
+
+		writeFileSync(
+			join(project.path, "package.json"),
+			JSON.stringify({ name: "fixture", type: "module", imports: { "#/*": "./src/domain/*" } }),
+		);
+
+		const domainDir = join(project.path, "src", "domain");
+		mkdirSync(domainDir, { recursive: true });
+		writeFileSync(join(domainDir, "message.ts"), 'export const message = "v1";\n');
+
+		const routesDir = join(project.path, "routes");
+		mkdirSync(routesDir, { recursive: true });
+		writeFileSync(
+			join(routesDir, "get.index.ts"),
+			`
+			import { defineRoute } from ${JSON.stringify(INDEX_PATH)};
+			import { message } from "#/message.ts";
+			export default defineRoute({
+				response: { safeParse: (d) => ({ success: true, data: d }) },
+				handler: async () => ({ data: { message } }),
+			});
+			`,
+		);
+
+		const port = 45000 + Math.floor(Math.random() * 1000);
+		const stop = await dev({
+			cwd: project.path,
+			routesDir,
+			outDir: join(project.path, ".nrr"),
+			port,
+			allowOrigins: [],
+		});
+		t.after(stop);
+
+		const firstMessage = await pollForMessage(port, "v1");
+		assert.equal(firstMessage, "v1");
+
+		// edit the #/-aliased file itself, not the route file - only the watcher covering
+		// getImportsWatchDirs's directories can pick this up
+		writeFileSync(join(domainDir, "message.ts"), 'export const message = "v2";\n');
+
+		const secondMessage = await pollForMessage(port, "v2");
+		assert.equal(secondMessage, "v2");
+	});
 });
