@@ -30,6 +30,37 @@ describe("formatLine", () => {
 	it("returns the original line unchanged if it isn't valid JSON", () => {
 		assert.equal(formatLine("not json"), "not json");
 	});
+
+	it("renders err.stack with real line breaks instead of a literal \\n", () => {
+		const line = JSON.stringify({
+			level: 50,
+			time: Date.now(),
+			msg: "request failed",
+			err: { type: "Error", message: "boom", stack: "Error: boom\n    at foo (file.js:1:1)" },
+		});
+		const formatted = formatLine(line);
+		assert.match(formatted, /Error: boom\n\s+at foo \(file\.js:1:1\)/);
+		assert.doesNotMatch(formatted, /\\n/);
+	});
+
+	it("still shows non-stack err fields (type, message, custom props) inline", () => {
+		const line = JSON.stringify({
+			level: 50,
+			time: Date.now(),
+			msg: "request failed",
+			err: { type: "Error", message: "boom", stack: "Error: boom", statusCode: 500 },
+		});
+		const formatted = formatLine(line);
+		assert.match(formatted, /"type":"Error"/);
+		assert.match(formatted, /"message":"boom"/);
+		assert.match(formatted, /"statusCode":500/);
+		assert.doesNotMatch(formatted, /"stack"/);
+	});
+
+	it("leaves a non-object err (already a primitive) untouched", () => {
+		const line = JSON.stringify({ level: 50, time: Date.now(), msg: "request failed", err: "just a string" });
+		assert.match(formatLine(line), /"err":"just a string"/);
+	});
 });
 
 describe("createLogger", () => {

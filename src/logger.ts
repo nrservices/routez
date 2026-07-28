@@ -34,6 +34,9 @@ const DIM = "\x1b[2m";
  * same NDJSON pino already produces, synchronously, in-process, so nothing extra is needed.
  * Exported (rather than an inline closure) so it's directly unit-testable.
  */
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+	typeof value === "object" && value !== null && !Array.isArray(value);
+
 export const formatLine = (line: string): string => {
 	let record: Record<string, unknown>;
 	try {
@@ -42,15 +45,27 @@ export const formatLine = (line: string): string => {
 		return line;
 	}
 
-	const { level, time, msg, pid: _pid, hostname: _hostname, requestId, ...rest } = record;
+	const { level, time, msg, pid: _pid, hostname: _hostname, requestId, err, ...rest } = record;
 	const levelNum = typeof level === "number" ? level : 30;
 	const label = (LEVEL_LABELS[levelNum] ?? String(level)).padEnd(5);
 	const color = LEVEL_COLORS[levelNum] ?? "";
 	const timestamp = typeof time === "number" ? new Date(time).toISOString().slice(11, 19) : "";
 	const requestIdPart = requestId ? ` ${DIM}[${requestId}]${RESET}` : "";
-	const extra = Object.keys(rest).length > 0 ? ` ${DIM}${JSON.stringify(rest)}${RESET}` : "";
 
-	return `${DIM}${timestamp}${RESET} ${color}${label}${RESET}${requestIdPart} ${msg ?? ""}${extra}`;
+	// pino's error serializer puts the stack trace on `err.stack` - left inline, JSON.stringify
+	// would escape its newlines to a literal `\n`, collapsing the whole trace onto one line.
+	// Pulled out here and reprinted below with real line breaks instead.
+	let stack: unknown;
+	let errRest = err;
+	if (isRecord(err) && typeof err.stack === "string") {
+		({ stack, ...errRest } = err);
+	}
+
+	const extraFields = err === undefined ? rest : { ...rest, err: errRest };
+	const extra = Object.keys(extraFields).length > 0 ? ` ${DIM}${JSON.stringify(extraFields)}${RESET}` : "";
+	const stackPart = typeof stack === "string" ? `\n${DIM}${stack.replace(/^/gm, "    ")}${RESET}` : "";
+
+	return `${DIM}${timestamp}${RESET} ${color}${label}${RESET}${requestIdPart} ${msg ?? ""}${extra}${stackPart}`;
 };
 
 const createPrettyStream = () => ({

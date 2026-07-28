@@ -84,14 +84,21 @@ export async function start({
 				const startedAt = Date.now();
 
 				const result = await handler(req, { requestId });
+				const statusCode = result.statusCode ?? 200;
+
+				// A route/hook can signal an error by returning `serverError()`/`httpError()`
+				// instead of throwing - that skips `setErrorHandler` entirely, so this is the
+				// only place a 5xx built that way ever gets logged. `err` (not `cause`) is the
+				// key on purpose: pino only runs its Error-aware serializer (type/message/stack)
+				// on a property named exactly `err`, same as the raw `Error` setErrorHandler logs.
+				if (statusCode >= 500) {
+					log.error({ requestId, method, url, statusCode, err: result.cause }, "request failed");
+				}
 
 				// `requestId` is explicit here, not via the logger's mixin - by this point
 				// composeRoute's own context (established only around hooks+handler) has
 				// already closed, so getContext() wouldn't find it.
-				log.info(
-					{ requestId, method, url, statusCode: result.statusCode ?? 200, durationMs: Date.now() - startedAt },
-					"request completed",
-				);
+				log.info({ requestId, method, url, statusCode, durationMs: Date.now() - startedAt }, "request completed");
 
 				void reply.header("x-request-id", String(requestId));
 
@@ -103,7 +110,7 @@ export async function start({
 					void reply.setCookie(responseCookie.name, responseCookie.value, responseCookie);
 				}
 
-				void reply.status(result.statusCode ?? 200).send(result.data);
+				void reply.status(statusCode).send(result.data);
 			},
 		});
 	});
