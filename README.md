@@ -89,7 +89,7 @@ export default defineRoute({
 });
 ```
 
-Each helper (`badRequest`, `unauthorized`, `forbidden`, `notFound`, `conflict`, `serverError`) takes `(data?, cause?)`. `httpError(statusCode, data?, cause?)` covers any other status code. `cause` is never sent to the client - it's carried alongside the result for a logger to pick up.
+Each helper (`badRequest`, `unauthorized`, `forbidden`, `notFound`, `conflict`, `serverError`) takes `(data?, cause?)`. `httpError(statusCode, data?, cause?)` covers any other status code. `cause` is never sent to the client - it's carried alongside the result, and logged at `error` level whenever the response is a 5xx (see [Unexpected errors](#unexpected-errors)).
 
 To give every error response a consistent shape (checked at compile time, not validated at runtime), augment `ErrorResponseBody`:
 
@@ -105,6 +105,8 @@ declare module "@nrserv/restez" {
 ### Unexpected errors
 
 An unexpected throw (a bug, a rejected DB call, ...) - unlike `notFound()`/`badRequest()`/etc., which never throw - gets a generic `500 { error: "Internal Server Error" }` response; the real error is only ever logged, never sent to the client. The one exception is a 4xx Fastify raises itself (malformed JSON, unsupported content-type, payload too large, ...), which keeps its own message since it describes a problem with the client's own request rather than an internal one.
+
+The same applies when a route or hook returns a 5xx directly instead of throwing - `return serverError(data, cause)` sends `data` to the client and logs `cause` at `error` level, same as an unexpected throw would.
 
 An error that escapes a request entirely (a fire-and-forget rejection, a throw inside a timer callback, ...) is logged the same way, then the process exits - there's no way to keep serving safely once that happens.
 
@@ -167,6 +169,8 @@ logger.error({ err }, "something went wrong");
 - `LOG_LEVEL` (env var) controls the level - defaults to `info`.
 - Every log call made while handling a request automatically includes that request's `requestId` - no need to pass it around yourself.
 - Every request that reaches a route logs one `"request completed"` line (`method`, `url`, `statusCode`, `durationMs`, `requestId`), and gets an `x-request-id` response header carrying the same id.
+- A `5xx` response additionally logs an `error`-level line first, carrying `cause` (if any) under the `err` key - same key as the `logger.error({ err }, ...)` convention above, so pino's error-aware serializer applies to it too.
+- In dev's colored output, an `err.stack` prints as an indented multi-line trace below the summary line instead of being squashed onto it.
 
 To use your own pino instance instead (custom transport, shipping logs elsewhere, ...), override it via config - see [Configuration](#configuration):
 

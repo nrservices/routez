@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.1.3] - 2026-07-28
+
+### Fixed
+
+- A route/hook returning `serverError()`/`httpError()` with a 5xx status (instead of throwing) now has its `cause` logged at `error` level. Previously only a thrown error was ever logged - a returned 5xx result silently produced nothing but an `info`-level `"request completed"` line, `cause` included.
+- Dev's pretty-printed log output no longer collapses a stack trace onto one line. `err.stack`'s line breaks were being JSON-escaped to a literal `\n` inline with the rest of the log line; now reprinted below it with real line breaks.
+
 ## [0.1.2] - 2026-07-27
 
 ### Fixed
