@@ -9,7 +9,7 @@ interface ErrorHandlerResult {
 /**
  * Build an error `HandlerResult` for any non-success status code - see `notFound()` and
  * friends for common cases. `cause` is never sent to the client (it isn't part of `data`) -
- * it rides along on the result so a logger can pick it up (see runtime.ts - upcoming).
+ * it rides along on the result so runtime.ts's route handler can log it for 5xx responses.
  */
 export function httpError(statusCode: ErrorHttpCode, data?: DefaultErrorData, cause?: unknown): ErrorHandlerResult {
 	return { statusCode, data, cause };
